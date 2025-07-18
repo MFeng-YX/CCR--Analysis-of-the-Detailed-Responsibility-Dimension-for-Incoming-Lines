@@ -1,5 +1,3 @@
-# 优化后的 _2筛选前几位客户明细.py 文件（适用于打包为 .exe 程序）
-
 import pandas as pd
 import os
 
@@ -11,12 +9,39 @@ PARAM_PROMPTS = {
     'input_pathB': '请输入筛选条件表格路径：',
     'output_dir': "请输入输出文件夹的绝对路径：",
     'date_prefix': '请输入输出文件的日期前缀：',
-    'row_quantity': '请输入你想作为筛选条件的行数量：',
-    'row_numbers': '请输入要使用的行索引（与行数量一致、用逗号分隔）',
+    'row_ranges': '请输入行索引范围（可以输入多个范围，用逗号分隔；例如：0-5,10-15）：',
     'extra_conditions': "请输入额外的固定值筛选条件（按列设置，可以输入多个条件）：\n例如：列名=工单小类,值=签收延误,派送延误\n请输入条件（格式：列名=值1,值2,...）："
 }
 
-def main(input_pathA=None, input_pathB=None, output_dir=None, date_prefix=None, row_quantity=None, row_numbers=None, extra_conditions=None):
+def parse_row_ranges(row_ranges_str, data_length):
+    """
+    解析行索引范围字符串为具体的行索引列表
+    """
+    row_indices = []
+    try:
+        ranges = row_ranges_str.split(',')
+        for r in ranges:
+            r = r.strip()
+            if '-' in r:
+                start, end = r.split('-')
+                start = int(start.strip())
+                end = int(end.strip())
+                if start < 0 or end >= data_length or start > end:
+                    print(f"无效的行索引范围：{r}，跳过此范围。")
+                    continue
+                row_indices.extend(range(start, end+1))
+            else:
+                index = int(r.strip())
+                if index < 0 or index >= data_length:
+                    print(f"无效的行索引：{r}，跳过此索引。")
+                    continue
+                row_indices.append(index)
+    except Exception as e:
+        raise ValueError(f"行索引范围格式不正确：{str(e)}")
+    
+    return list(set(row_indices))  # 去重并返回
+
+def main(input_pathA=None, input_pathB=None, output_dir=None, date_prefix=None, row_ranges=None, extra_conditions=None):
     try:
         # 去除路径中的引号
         input_pathA = input_pathA.strip('"') if input_pathA else None
@@ -24,14 +49,13 @@ def main(input_pathA=None, input_pathB=None, output_dir=None, date_prefix=None, 
         output_dir = output_dir.strip('"') if output_dir else None
         
         # 检查所有必需参数是否已提供
-        if not all([input_pathA, input_pathB, output_dir, date_prefix, row_quantity, row_numbers]):
+        if not all([input_pathA, input_pathB, output_dir, date_prefix, row_ranges]):
             missing_params = []
             if not input_pathA: missing_params.append('input_pathA')
             if not input_pathB: missing_params.append('input_pathB')
             if not output_dir: missing_params.append('output_dir')
             if not date_prefix: missing_params.append('date_prefix')
-            if not row_quantity: missing_params.append('row_quantity')
-            if not row_numbers: missing_params.append('row_numbers')
+            if not row_ranges: missing_params.append('row_ranges')
             
             raise ValueError(f"缺少必要的参数：{', '.join(missing_params)}")
         
@@ -80,24 +104,12 @@ def main(input_pathA=None, input_pathB=None, output_dir=None, date_prefix=None, 
             print(f"筛选条件表格中缺少必要的列：{', '.join(required_columns)}")
             return
         
-        conditions_b = df_b[required_columns]
-        
-        # 处理行索引参数
+        # 解析行索引范围
         try:
-            row_numbers = [int(num.strip()) for num in row_numbers.split(',')]
-            row_quantity = int(row_quantity)
-        except:
-            raise ValueError("行索引或行数量参数格式不正确")
-        
-        # 验证输入的行数量是否与指定数量一致
-        if len(row_numbers) != row_quantity:
-            raise ValueError(f"输入的行索引数量与指定的行数量 {row_quantity} 不一致")
-        
-        # 验证索引是否在有效范围内
-        if any(idx < 0 or idx >= len(df_b) for idx in row_numbers):
-            raise ValueError("输入的行索引超出有效范围")
-        
-        conditions_b = df_b[required_columns].iloc[row_numbers]
+            row_indices = parse_row_ranges(row_ranges, len(df_b))
+            conditions_b = df_b[required_columns].iloc[row_indices]
+        except ValueError as e:
+            raise ValueError(f"行索引范围解析错误：{str(e)}")
         
         # 打印条件数据，供用户检查
         print("用于筛选的条件数据：")
@@ -129,6 +141,12 @@ def main(input_pathA=None, input_pathB=None, output_dir=None, date_prefix=None, 
                         except ValueError:
                             print(f"输入的值 {values} 无法转换为数字，跳过此条件。")
                             continue
+                    elif pd.api.types.is_datetime64_dtype(df_a[col]):
+                        try:
+                            values = [pd.to_datetime(value) for value in values]
+                        except ValueError:
+                            print(f"输入的值 {values} 无法转换为日期时间，跳过此条件。")
+                            continue
                     
                     # 应用固定值筛选条件
                     mask = df_a[col].isin(values)
@@ -152,7 +170,7 @@ def main(input_pathA=None, input_pathB=None, output_dir=None, date_prefix=None, 
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
         
-        file_name = f"{date_prefix}-前{row_quantity}位客户明细.xlsx"
+        file_name = f"{date_prefix}-前几位客户明细.xlsx"
         file_path = os.path.join(output_dir, file_name)
         filtered_df.to_excel(file_path, index=False)
         
@@ -168,11 +186,10 @@ def main(input_pathA=None, input_pathB=None, output_dir=None, date_prefix=None, 
         else:
             print("合并后的数据表中没有找到“单号”列，无法保存单号列表。")
         
-        return {'success': True, 'message': "操作成功完成！"}
+        return {'success': True, 'message': "操作成功完成！" }
     
     except Exception as e:
-        return {'success': False, 'message': str(e)}
-
+        return {'success': False, 'message': str(e) }
 
 # 如果直接运行此脚本（而非被导入），则可以从命令行获取参数并调用 filter_data_by_conditions 函数
 if __name__ == "__main__":
@@ -180,5 +197,6 @@ if __name__ == "__main__":
     input_pathB = input('请输入筛选条件表格路径：').strip('"')
     output_dir = input("请输入输出文件夹的绝对路径：").strip('"')
     date_prefix = input('请输入输出文件的日期前缀：').strip('"')
-    result = main(input_pathA, input_pathB, output_dir, date_prefix)
+    row_ranges = input('请输入行索引范围（例如：0-5,10-15）：').strip('"')
+    result = main(input_pathA, input_pathB, output_dir, date_prefix, row_ranges)
     print(result['message'])
