@@ -99,7 +99,8 @@ def main(table_a_path, table_b_path, output_dir, date_prefix):
                         '工单小类', '投诉/催查内容']
         df_merged = df_merged[cols_order_new]
 
-        df_merged[['入库时间', '进线-入库时间差']] = df_merged[['入库时间', '进线-入库时间差']].fillna('')
+        df_merged[['入库时间']] = df_merged[['入库时间']].fillna('')
+        df_merged[['进线-入库时间差']] = df_merged[['进线-入库时间差']].fillna(-1)
 
         # 确保输出文件夹存在
         if not os.path.exists(output_dir):
