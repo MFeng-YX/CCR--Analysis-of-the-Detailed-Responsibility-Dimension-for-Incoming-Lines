@@ -35,5 +35,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=['C:\\Users\\admin\\Desktop\\文件\\Computer-Language exercise\\Python-exercise\\工作自动化\\CCR\\CCR-进线明细责任维度分析\\favicon.ico'],
+    icon=["D:\\文件\Computer-Language exercise\\Python-exercise\\工作自动化\\CCR\\CCR-进线明细责任维度分析\\favicon.ico"],
 )
