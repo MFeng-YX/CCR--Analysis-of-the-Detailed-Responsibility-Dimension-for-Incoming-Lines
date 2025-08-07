@@ -55,7 +55,7 @@ def main(table_a_path, table_b_path, output_dir, date_prefix):
         df_b = read_file(table_b_path)
 
         # 选取需要的列
-        cols_a = ['单号', '揽收网点名称', 'K码', '客户名称', '进线时间', '工单小类', '投诉/催查内容']
+        cols_a = ['单号', '揽收网点名称', 'K码', '客户名称', '进线时间', '工单小类', '投诉/催查内容', '渠道名称']
         df_a_selected = df_a[cols_a].copy()
 
         cols_b = ['运单号', '操作时间', '操作名称']
@@ -71,7 +71,7 @@ def main(table_a_path, table_b_path, output_dir, date_prefix):
         df_merged = df_merged.rename(columns={'操作时间': '入库时间'})
         df_merged = df_merged.drop('运单号', axis=1)
 
-        cols_order = ['单号', '揽收网点名称', 'K码', '客户名称', '进线时间', '入库时间', '工单小类', '投诉/催查内容']
+        cols_order = ['单号', '揽收网点名称', 'K码', '客户名称', '进线时间', '入库时间', '工单小类', '投诉/催查内容', '渠道名称']
         df_merged = df_merged[cols_order]
 
         # 新增几列数据
@@ -94,7 +94,7 @@ def main(table_a_path, table_b_path, output_dir, date_prefix):
             right=False
         )
 
-        cols_order_new = ['单号', '揽收网点名称', 'K码', '客户名称', '进线时间', '入库时间', 
+        cols_order_new = ['单号', '揽收网点名称', 'K码', '客户名称', '渠道名称', '进线时间', '入库时间', 
                         '进线-入库时间差', '入库前后', '入库后进线-进线与入库时间差分布区间', 
                         '工单小类', '投诉/催查内容']
         df_merged = df_merged[cols_order_new]
